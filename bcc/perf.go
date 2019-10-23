@@ -108,13 +108,21 @@ func determineHostByteOrder() binary.ByteOrder {
 }
 
 // InitPerfMap initializes a perf map with a receiver channel.
-func InitPerfMap(table *Table, receiverChan chan []byte) (*PerfMap, error) {
+func InitPerfMap(table *Table, receiverChan chan []byte, pageCount uint) (*PerfMap, error) {
 	fd := table.Config()["fd"].(int)
 	keySize := table.Config()["key_size"].(uint64)
 	leafSize := table.Config()["leaf_size"].(uint64)
 
 	if keySize != 4 || leafSize != 4 {
 		return nil, fmt.Errorf("passed table has wrong size")
+	}
+
+	// If page count is not set, use the default. Must be power of 2.
+	if pageCount == 0 {
+		pageCount = BPF_PERF_READER_PAGE_CNT
+	}
+	if pageCount&(pageCount-1) != 0 {
+		return nil, fmt.Errorf("page count must be power of 2")
 	}
 
 	callbackDataIndex := registerCallback(&callbackData{
@@ -134,7 +142,7 @@ func InitPerfMap(table *Table, receiverChan chan []byte) (*PerfMap, error) {
 	}
 
 	for _, cpu := range cpus {
-		reader, err := bpfOpenPerfBuffer(cpu, callbackDataIndex)
+		reader, err := bpfOpenPerfBuffer(cpu, callbackDataIndex, pageCount)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open perf buffer: %v", err)
 		}
@@ -186,13 +194,13 @@ func (pm *PerfMap) poll(timeout int) {
 	}
 }
 
-func bpfOpenPerfBuffer(cpu uint, callbackDataIndex uint64) (unsafe.Pointer, error) {
+func bpfOpenPerfBuffer(cpu uint, callbackDataIndex uint64, pageCount uint) (unsafe.Pointer, error) {
 	cpuC := C.int(cpu)
 	reader, err := C.bpf_open_perf_buffer(
 		(C.perf_reader_raw_cb)(unsafe.Pointer(C.callback_to_go)),
 		nil,
 		unsafe.Pointer(uintptr(callbackDataIndex)),
-		-1, cpuC, BPF_PERF_READER_PAGE_CNT)
+		-1, cpuC, C.int(pageCount))
 	if reader == nil {
 		return nil, fmt.Errorf("failed to open perf buffer: %v", err)
 	}
