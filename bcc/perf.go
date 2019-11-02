@@ -23,17 +23,17 @@ import (
 	"github.com/iovisor/gobpf/pkg/cpuonline"
 )
 
-/*
-#cgo CFLAGS: -I/usr/include/bcc/compat
-#cgo LDFLAGS: -lbcc
-#include <bcc/bcc_common.h>
-#include <bcc/libbpf.h>
-#include <bcc/perf_reader.h>
-
-// perf_reader_raw_cb as defined in bcc libbpf.h
-// typedef void (*perf_reader_raw_cb)(void *cb_cookie, void *raw, int raw_size);
-extern void callback_to_go(void*, void*, int);
-*/
+// #cgo CFLAGS: -I/usr/include/bcc/compat
+// #cgo LDFLAGS: -ldl
+//
+// #include <bcc/bcc_common.h>
+// #include <bcc/libbpf.h>
+// #include <bcc/perf_reader.h>
+//
+// extern void callback_to_go(void*, void*, int);
+// extern void *bpf_open_perf_buffer(perf_reader_raw_cb, perf_reader_lost_cb, void *, int, int, int);
+// extern int perf_reader_fd(struct perf_reader *);
+// extern int perf_reader_poll(int, struct perf_reader **, int);
 import "C"
 
 type PerfMap struct {
